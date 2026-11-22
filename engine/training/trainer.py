@@ -21,7 +21,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torch.cuda.amp import GradScaler, autocast
+from torch.amp import GradScaler, autocast
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +101,9 @@ class Trainer:
             weight_decay=config.weight_decay,
         )
 
-        # Mixed precision
-        self.scaler = GradScaler(enabled=config.use_amp)
+        # Mixed precision only pays off (and only works with the scaler) on cuda
+        self.amp = config.use_amp and self.device.type == "cuda"
+        self.scaler = GradScaler(self.device.type, enabled=self.amp)
 
         # Scheduler (set up per fold)
         self.scheduler = None
@@ -279,7 +280,7 @@ class Trainer:
 
             self.optimizer.zero_grad()
 
-            with autocast(device_type=self.device.type, enabled=self.config.use_amp):
+            with autocast(device_type=self.device.type, enabled=self.amp):
                 output = self.model(expert_input, router_input)
                 loss_dict = self.loss_fn(
                     output["direction_prob"],
@@ -346,7 +347,7 @@ class Trainer:
             router_input = batch["router_input"].to(self.device)
             target_return = batch["target_return"].to(self.device)
 
-            with autocast(device_type=self.device.type, enabled=self.config.use_amp):
+            with autocast(device_type=self.device.type, enabled=self.amp):
                 output = self.model(expert_input, router_input)
                 loss_dict = self.loss_fn(
                     output["direction_prob"],
@@ -425,7 +426,7 @@ class Trainer:
                 lr=self.config.learning_rate,
                 weight_decay=self.config.weight_decay,
             )
-            self.scaler = GradScaler(enabled=self.config.use_amp)
+            self.scaler = GradScaler(self.device.type, enabled=self.amp)
 
             result = self.train_fold(
                 train_loader=fold_data["train"],
