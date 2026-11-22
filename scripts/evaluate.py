@@ -100,6 +100,8 @@ def main():
     ap.add_argument("--epochs", type=int, default=0, help="override max epochs")
     ap.add_argument("--folds", type=int, default=0)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--reuse", type=int, default=0,
+                    help="load the saved best checkpoint for folds below this index instead of training")
     ap.add_argument("--side-cost", type=float, default=-1,
                     help="cost per side as a fraction; default: the engine's indian cost model")
     ap.add_argument("--out", default="results/eval_nifty.json")
@@ -128,6 +130,7 @@ def main():
     rets = []
     for i, f in enumerate(folds):
         t0 = time.time()
+        torch.manual_seed(a.seed * 1000 + i)
         train, test = collect(f["train"]), collect(f["test"])
         ret = test["target_return"].numpy().astype(float)
         rets.append(ret)
@@ -142,17 +145,26 @@ def main():
                          use_amp=t_cfg["use_amp"], scheduler=t_cfg["scheduler"],
                          warmup_epochs=t_cfg["warmup_epochs"], checkpoint_dir=f"models/eval_s{a.seed}")
         trainer = Trainer(model, loss, tc, device=torch.device(a.device))
-        info = trainer.train_fold(f["train"], f["val"], fold_idx=i)
+        ckpt = Path(tc.checkpoint_dir) / f"fold_{i}_best.pt"
+        if i < a.reuse and ckpt.exists():
+            state = torch.load(ckpt, map_location=a.device, weights_only=False)
+            model.load_state_dict(state["model_state_dict"])
+            model.to(a.device)
+            info = {"best_epoch": state["epoch"], "reused": True}
+        else:
+            info = trainer.train_fold(f["train"], f["val"], fold_idx=i)
 
         probs = {"buy_hold": np.ones(len(ret)), "logreg": logreg_probs(train, test),
                  "moe": moe_probs(model, test, a.device)}
         row = {"fold": i, "test_days": len(ret), "best_epoch": info.get("best_epoch"),
-               "sec": round(time.time() - t0, 1)}
+               "reused": info.get("reused", False), "sec": round(time.time() - t0, 1)}
         for k, p in probs.items():
             daily, pos = strategy(p, ret, buy_cost, sell_cost)
             row[k] = summarise(daily, pos, p, ret)
             all_ret[k].append(daily); all_pos[k].append(pos); all_probs[k].append(p)
         per_fold.append(row)
+        Path(a.out).parent.mkdir(parents=True, exist_ok=True)
+        json.dump({"seed": a.seed, "partial": True, "per_fold": per_fold}, open(a.out, "w"), indent=1)
         logger.info(f"fold {i}: " + ", ".join(f"{k} ret {row[k]['total_return']:+.3f} acc {row[k]['accuracy']:.3f}"
                                              for k in all_ret) + f" ({row['sec']} s)")
 
