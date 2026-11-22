@@ -144,7 +144,7 @@ training:
     step_years: 1
   
   # Mixed precision
-  use_amp: true
+  use_amp: false            # tiny model (262k params) and an ode solver: fp16 gains little and risks precision
   
   # Scheduler
   scheduler: "cosine"
