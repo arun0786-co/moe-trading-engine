@@ -114,6 +114,7 @@ def main():
                     help="load the saved best checkpoint for folds below this index instead of training")
     ap.add_argument("--side-cost", type=float, default=-1,
                     help="cost per side as a fraction; default: the engine's indian cost model")
+    ap.add_argument("--end-date", default=None, help="last data date, default: config (null = today)")
     ap.add_argument("--out", default="results/eval_nifty.json")
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s: %(message)s")
@@ -123,6 +124,8 @@ def main():
     np.random.seed(a.seed)
 
     cfg = yaml.safe_load(open(a.config))
+    if a.end_date:
+        cfg["data"]["end_date"] = a.end_date
     folds = build_dataloaders(cfg)
     if a.folds:
         folds = folds[:a.folds]
