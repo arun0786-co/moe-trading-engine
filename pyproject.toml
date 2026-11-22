@@ -1,0 +1,52 @@
+[project]
+name = "moe-trading-engine"
+version = "0.1.0"
+description = "mixture of experts model for nifty 50 swing trades, with walk forward backtests"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # Core ML
+    "torch>=2.0",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scipy>=1.11",
+
+    # Data
+    "yfinance>=0.2.28",
+    "ta>=0.11.0",
+
+    # NLP / Sentiment
+    "transformers>=4.35",
+    "feedparser>=6.0",
+
+    # Neural ODE
+    "torchdiffeq>=0.2.3",
+
+    # Experiment tracking
+    "wandb>=0.16",
+
+    # Config
+    "pyyaml>=6.0",
+
+    # Scheduling
+    "schedule>=1.2",
+
+    # Database
+    "sqlalchemy>=2.0",
+
+    # Testing
+    "pytest>=7.0",
+
+    # Utilities
+    "requests>=2.31",
+    "rich>=13.0",
+    "tqdm>=4.66",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
