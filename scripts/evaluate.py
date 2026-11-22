@@ -159,10 +159,16 @@ def main():
     ret_all = np.concatenate(rets)
     overall = {k: summarise(np.concatenate(all_ret[k]), np.concatenate(all_pos[k]),
                             np.concatenate(all_probs[k]), ret_all) for k in all_ret}
+    # the same predictions at a pessimistic 0.1% per side (delivery stt alone is 0.1%)
+    hi = {}
+    for k in all_ret:
+        p_all = np.concatenate(all_probs[k])
+        daily, pos = strategy(p_all, ret_all, 0.001, 0.001)
+        hi[k] = summarise(daily, pos, p_all, ret_all)
     out = {"config": a.config, "seed": a.seed, "device": a.device, "folds": len(folds),
            "test_days": int(len(ret_all)), "buy_cost": buy_cost, "sell_cost": sell_cost,
            "up_day_share": round(float((ret_all > 0).mean()), 4),
-           "overall": overall, "per_fold": per_fold}
+           "overall": overall, "overall_cost_0.1pct_side": hi, "per_fold": per_fold}
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     json.dump(out, open(a.out, "w"), indent=1)
     print(json.dumps(out["overall"], indent=1))
