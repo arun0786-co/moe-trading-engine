@@ -19,13 +19,10 @@ import torch
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from engine.data.downloader import DataDownloader
-from engine.data.features import FeatureEngineer
-from engine.data.dataset import WalkForwardSplitter, build_dataloaders
+from engine.data.dataset import build_dataloaders
 from engine.models.moe import MoETradingEngine
 from engine.training.losses import CombinedTradingLoss
 from engine.training.trainer import Trainer, TrainConfig
-from engine.training.online_learner import OnlineLearner, OnlineLearningConfig
 
 
 logging.basicConfig(
@@ -49,6 +46,7 @@ def main():
     parser.add_argument("--no-wandb", action="store_true", help="Disable WandB logging")
     parser.add_argument("--device", type=str, default=None, help="Device (cuda/cpu)")
     parser.add_argument("--epochs", type=int, default=None, help="Override max epochs")
+    parser.add_argument("--folds", type=int, default=0, help="only the first n folds (quick checks)")
     args = parser.parse_args()
 
     # Load config
@@ -63,55 +61,27 @@ def main():
     logger.info(f"Using device: {device}")
     if device.type == "cuda":
         logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
-        logger.info(f"GPU Memory: {torch.cuda.get_device_properties(0).total_mem / 1e9:.1f} GB")
+        logger.info(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
 
-    # Data pipeline
-    ticker = args.ticker or config["data"]["assets"][0]
-    logger.info(f"Target asset: {ticker}")
-
-    downloader = DataDownloader()
-    df = downloader.download(
-        ticker=ticker,
-        start_date=config["data"]["start_date"],
-        end_date=config["data"].get("end_date"),
-    )
-    logger.info(f"Downloaded {len(df)} days of data")
-
-    # Feature engineering
-    feature_eng = FeatureEngineer()
-    df_features = feature_eng.compute_all_features(df)
-    logger.info(f"Engineered {df_features.shape[1]} features")
-
-    # Build walk-forward data loaders
-    wf_config = config["training"]["walk_forward"]
-    folds = build_dataloaders(
-        df=df_features,
-        expert_feature_names=feature_eng.get_expert_feature_names(),
-        router_feature_names=feature_eng.get_router_feature_names(),
-        target_col="target_return",
-        lookback=config["data"]["lookback_window"],
-        batch_size=config["training"]["batch_size"],
-        train_years=wf_config["train_years"],
-        val_years=wf_config["val_years"],
-        test_years=wf_config["test_years"],
-        step_years=wf_config["step_years"],
-    )
+    # data: download, features, normalize, walk forward folds (all in one place)
+    if args.ticker:
+        config["data"]["assets"] = [args.ticker]
+    logger.info(f"Target asset: {config['data']['assets'][0]}")
+    folds = build_dataloaders(config)
     logger.info(f"Created {len(folds)} walk-forward folds")
+    if args.folds:
+        folds = folds[:args.folds]
 
-    # Build model
-    expert_dim = len(feature_eng.get_expert_feature_names())
-    router_dim = len(feature_eng.get_router_feature_names())
+    # input sizes come from the data, not the config
+    first = next(iter(folds[0]["train"]))
+    expert_dim = first["expert_input"].shape[-1]
+    router_dim = first["router_input"].shape[-1]
 
     model = MoETradingEngine(
         expert_input_dim=expert_dim,
         router_input_dim=router_dim,
         hidden_dim=config["model"]["expert_hidden_dim"],
-        num_experts=config["model"]["num_experts"],
         router_hidden_dim=config["model"]["router_hidden_dim"],
-        ode_config=config["model"].get("ode", {}),
-        hyper_lstm_config=config["model"].get("hyper_lstm", {}),
-        ssm_config=config["model"].get("ssm", {}),
-        router_config=config["model"].get("router_config", {}),
     )
     logger.info(f"Model built: {sum(p.numel() for p in model.parameters()):,} parameters")
 
@@ -158,25 +128,9 @@ def main():
 
     # Save final model
     final_path = Path("models") / "moe_engine_final.pt"
+    final_path.parent.mkdir(exist_ok=True)
     torch.save(model.state_dict(), final_path)
     logger.info(f"Final model saved to {final_path}")
-
-    # Initialize online learner for future daily updates
-    ol_config = OnlineLearningConfig(
-        replay_buffer_days=config["online_learning"]["replay_buffer_days"],
-        mini_batch_steps=config["online_learning"]["mini_batch_steps"],
-        online_lr=config["online_learning"]["online_lr"],
-        ewc_lambda=config["online_learning"]["ewc_lambda"],
-    )
-    online_learner = OnlineLearner(model=model, loss_fn=loss_fn, config=ol_config, device=device)
-
-    # Compute Fisher information from last fold's training data
-    if folds:
-        online_learner.update_fisher(folds[-1]["train"])
-
-    ol_path = Path("models") / "online_learner_state.pt"
-    online_learner.save_state(ol_path)
-    logger.info(f"Online learner state saved to {ol_path}")
 
 
 if __name__ == "__main__":
