@@ -1,0 +1,225 @@
+# ============================================================
+# MoE Trading Engine — Central Configuration
+# ============================================================
+# All hyperparameters, feature definitions, risk limits, and
+# system settings in one place. No magic numbers in code.
+# ============================================================
+
+# --- Data Settings ---
+data:
+  # Assets to trade (NSE tickers for yfinance)
+  assets:
+    - "^NSEI"           # Nifty 50 Index
+  # Individual stocks (for later expansion)
+  stock_universe:
+    - "RELIANCE.NS"
+    - "HDFCBANK.NS"
+    - "SBIN.NS"
+    - "TCS.NS"
+    - "INFY.NS"
+    - "TATAMOTORS.NS"
+    - "ICICIBANK.NS"
+    - "BAJFINANCE.NS"
+  
+  # Historical range
+  start_date: "2010-01-01"
+  end_date: null             # null = today
+  
+  # Sequence windowing
+  lookback_window: 30        # Days of history per sample
+  forecast_horizon: 1        # Predict N days ahead
+  
+  # Data paths
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  sentiment_dir: "data/sentiment"
+
+# --- Feature Engineering ---
+features:
+  # Expert features (fed to expert models)
+  expert_features:
+    price_returns:
+      - "ret_open"
+      - "ret_high"
+      - "ret_low"
+      - "ret_close"
+    volume:
+      - "log_volume"
+      - "volume_zscore"
+      - "volume_ratio_20"
+    trend:
+      - "sma_10_cross"       # Price vs SMA(10) relative position
+      - "sma_20_cross"
+      - "sma_50_cross"
+      - "ema_macd_signal"    # EMA(12) - EMA(26) signal
+    momentum:
+      - "rsi_14"
+      - "macd_histogram"
+      - "stoch_k"
+      - "stoch_d"
+    volatility:
+      - "atr_14"
+      - "bb_width"
+      - "bb_pctb"
+      - "rolling_std_10"
+      - "rolling_std_30"
+    volume_profile:
+      - "obv_change"
+      - "ad_line"
+      - "cmf_20"             # Chaikin Money Flow
+    calendar:
+      - "day_of_week_sin"
+      - "day_of_week_cos"
+      - "is_expiry_week"
+    sentiment:
+      - "finbert_score"
+  
+  # Router features (fed to gating network)
+  router_features:
+    - "rolling_vol_10"
+    - "rolling_vol_30"
+    - "trend_velocity"
+    - "adx_14"
+    - "hurst_exponent"
+    - "return_autocorr_1"
+    - "return_autocorr_5"
+    - "volume_regime"
+    - "vol_ratio_short_long"
+
+# --- Model Architecture ---
+model:
+  # Expert dimensions
+  expert_input_dim: null     # Auto-computed from features
+  expert_hidden_dim: 128
+  num_experts: 3
+  
+  # Router
+  router_input_dim: null     # Auto-computed from router features
+  router_hidden_dim: 64
+  
+  # Output projection
+  output_mode: "dual"        # "dual" = direction + magnitude, "classification" = direction only
+  
+  # Expert-specific
+  ode:
+    solver: "dopri5"         # Dormand-Prince adaptive solver
+    rtol: 1.0e-3
+    atol: 1.0e-4
+  
+  hyper_lstm:
+    hyper_hidden_dim: 32
+    use_layer_norm: true
+    zoneout_prob: 0.05
+  
+  ssm:
+    state_dim: 64
+    dt_min: 0.001
+    dt_max: 0.1
+  
+  router_config:
+    temperature: 1.0          # Gumbel-Softmax temperature
+    load_balance_weight: 0.1  # Auxiliary loss weight
+    confidence_threshold: 0.4 # Below this: soft blend; above: hard route
+    min_expert_usage: 0.1     # Each expert must be used at least 10%
+
+# --- Training ---
+training:
+  batch_size: 64
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  max_epochs: 200
+  patience: 20               # Early stopping patience
+  gradient_clip: 1.0
+  
+  # Loss weights
+  direction_loss_weight: 0.6
+  magnitude_loss_weight: 0.3
+  balance_loss_weight: 0.1
+  
+  # Walk-forward validation
+  walk_forward:
+    train_years: 5
+    val_years: 1
+    test_years: 1
+    step_years: 1
+  
+  # Mixed precision
+  use_amp: true
+  
+  # Scheduler
+  scheduler: "cosine"
+  warmup_epochs: 5
+
+# --- Online Learning ---
+online_learning:
+  replay_buffer_days: 90
+  mini_batch_steps: 5
+  online_lr: 1.0e-4
+  ewc_lambda: 5000           # Elastic Weight Consolidation strength
+  validation_window_days: 30
+  weekend_full_retrain: true
+
+# --- Risk Management ---
+risk:
+  # Capital
+  starting_capital: 100000   # ₹1,00,000
+  
+  # Position sizing
+  method: "volatility_adjusted"  # Options: fixed_fractional, volatility_adjusted, kelly
+  max_risk_per_trade: 0.02       # Risk 2% of capital per trade
+  max_position_pct: 0.25         # Never > 25% of portfolio in one trade
+  min_confidence: 0.55           # Minimum model confidence to trade
+  
+  # Stop losses
+  stop_loss:
+    method: "atr"                # Options: fixed, atr, trailing
+    fixed_pct: 0.02              # 2% fixed stop
+    atr_multiplier: 2.0          # Stop at entry - 2*ATR
+    trailing_atr_multiplier: 1.5
+  
+  # Time-based exit
+  max_holding_days: 15           # Exit after 15 days if no stop/target hit
+  
+  # Circuit breakers
+  circuit_breaker:
+    daily_loss_limit: 0.02       # Halt if portfolio drops 2% in a day
+    weekly_drawdown_limit: 0.05  # Reduce sizing if weekly DD > 5%
+    max_drawdown_halt: 0.15      # Full halt at 15% drawdown
+    consecutive_loss_limit: 5    # Pause after 5 consecutive losses
+
+# --- Transaction Costs (Indian Market) ---
+costs:
+  brokerage_per_trade: 20       # ₹20 flat (Zerodha)
+  brokerage_pct: 0.0003         # 0.03%
+  stt_sell_pct: 0.00025         # 0.025% on sell (delivery)
+  exchange_charges_pct: 0.0000345
+  gst_pct: 0.18                 # 18% on brokerage + exchange charges
+  sebi_fee_pct: 0.000001        # 0.0001%
+  stamp_duty_buy_pct: 0.00015   # 0.015% on buy
+
+# --- NSE Market Calendar ---
+market:
+  exchange: "NSE"
+  timezone: "Asia/Kolkata"
+  market_open: "09:15"
+  market_close: "15:30"
+  
+  # Pipeline schedule
+  pipeline:
+    data_download_time: "16:00"
+    inference_time: "16:15"
+    online_train_time: "16:30"
+
+# --- CUDA Settings ---
+cuda:
+  arch_targets:
+    - "sm_61"    # GTX 1080 Ti (Pascal)
+    - "sm_75"    # RTX 2080 Ti (Turing)
+  num_gpus: 4
+  batch_size_per_gpu: 256
+
+# --- Monitoring ---
+monitoring:
+  wandb_project: "moe-trading-engine"
+  trade_log_db: "logs/trades.db"
+  log_level: "INFO"
