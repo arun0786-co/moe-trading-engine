@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-from evaluate import strategy  # noqa: E402
+from evaluate import combine, strategy  # noqa: E402
 
 
 def test_costs_paid_only_when_position_changes():
@@ -19,3 +19,10 @@ def test_costs_paid_only_when_position_changes():
 def test_flat_earns_nothing():
     daily, pos = strategy(np.zeros(5), np.ones(5) * 0.01, 0.001, 0.001)
     assert (daily == 0).all() and (pos == 0).all()
+
+
+def test_buy_hold_buys_once_across_folds():
+    ret = np.full(10, 0.01)
+    out = combine({"buy_hold": np.ones(10)}, ret, 0.001, 0.001)["buy_hold"]
+    assert out["trades"] == 1
+    assert np.isclose(out["total_return"], round(0.999 * 1.01 ** 10 - 1, 4))

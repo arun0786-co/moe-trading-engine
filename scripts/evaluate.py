@@ -93,6 +93,16 @@ def summarise(daily, pos, probs, ret):
     }
 
 
+def combine(probs, ret, buy_cost, sell_cost):
+    """run each strategy once over all test folds joined end to end, so a
+    position held across a fold boundary is not sold and bought again."""
+    out = {}
+    for k, p in probs.items():
+        daily, pos = strategy(p, ret, buy_cost, sell_cost)
+        out[k] = summarise(daily, pos, p, ret)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="config/settings.yaml")
@@ -125,8 +135,7 @@ def main():
     logger.info(f"costs per side: buy {buy_cost:.5f}, sell {sell_cost:.5f}")
 
     t_cfg = cfg["training"]
-    per_fold, all_ret = [], {"buy_hold": [], "logreg": [], "moe": []}
-    all_pos, all_probs = {k: [] for k in all_ret}, {k: [] for k in all_ret}
+    per_fold, all_probs = [], {"buy_hold": [], "logreg": [], "moe": []}
     rets = []
     for i, f in enumerate(folds):
         t0 = time.time()
@@ -161,22 +170,18 @@ def main():
         for k, p in probs.items():
             daily, pos = strategy(p, ret, buy_cost, sell_cost)
             row[k] = summarise(daily, pos, p, ret)
-            all_ret[k].append(daily); all_pos[k].append(pos); all_probs[k].append(p)
+            all_probs[k].append(p)
         per_fold.append(row)
         Path(a.out).parent.mkdir(parents=True, exist_ok=True)
         json.dump({"seed": a.seed, "partial": True, "per_fold": per_fold}, open(a.out, "w"), indent=1)
         logger.info(f"fold {i}: " + ", ".join(f"{k} ret {row[k]['total_return']:+.3f} acc {row[k]['accuracy']:.3f}"
-                                             for k in all_ret) + f" ({row['sec']} s)")
+                                             for k in all_probs) + f" ({row['sec']} s)")
 
     ret_all = np.concatenate(rets)
-    overall = {k: summarise(np.concatenate(all_ret[k]), np.concatenate(all_pos[k]),
-                            np.concatenate(all_probs[k]), ret_all) for k in all_ret}
+    probs_all = {k: np.concatenate(all_probs[k]) for k in all_probs}
+    overall = combine(probs_all, ret_all, buy_cost, sell_cost)
     # the same predictions at a pessimistic 0.1% per side (delivery stt alone is 0.1%)
-    hi = {}
-    for k in all_ret:
-        p_all = np.concatenate(all_probs[k])
-        daily, pos = strategy(p_all, ret_all, 0.001, 0.001)
-        hi[k] = summarise(daily, pos, p_all, ret_all)
+    hi = combine(probs_all, ret_all, 0.001, 0.001)
     out = {"config": a.config, "seed": a.seed, "device": a.device, "folds": len(folds),
            "test_days": int(len(ret_all)), "buy_cost": buy_cost, "sell_cost": sell_cost,
            "up_day_share": round(float((ret_all > 0).mean()), 4),
