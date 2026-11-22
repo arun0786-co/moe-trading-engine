@@ -129,8 +129,10 @@ class TradingDataset(Dataset):
         expert_window = self.expert_features[idx : idx + self.lookback]
         router_window = self.router_features[idx : idx + self.lookback]
 
-        # Target sits at the end of the window + horizon
-        target_idx = idx + self.lookback + self.horizon - 1
+        # targets_return[i] is already the return from day i to day i + horizon
+        # (pct_change shifted back by horizon), so the target belongs to the
+        # last day of the window. adding horizon again here skipped a day.
+        target_idx = idx + self.lookback - 1
         fwd_return = self.targets_return[target_idx]
         direction = 1.0 if fwd_return >= 0 else 0.0
 
