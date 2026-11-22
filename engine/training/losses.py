@@ -198,6 +198,10 @@ class CombinedTradingLoss(nn.Module):
         Returns:
             Dictionary with 'total', 'direction', 'magnitude', 'balance' losses
         """
+        # everything flat, so a [B, 1] never broadcasts against a [B]
+        pred_direction = pred_direction.reshape(-1)
+        pred_magnitude = pred_magnitude.reshape(-1)
+        target_return = target_return.reshape(-1)
         l_dir = self.direction_loss(pred_direction, target_return)
         l_mag = self.magnitude_loss(pred_magnitude, target_return)
         l_bal = self.balance_loss(gate_probs)

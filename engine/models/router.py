@@ -171,8 +171,11 @@ class MasterRouter(nn.Module):
             ).float()  # [B, E]
             gate_weights = torch.where(hard_mask, one_hot, probs)
 
+        # gate probabilities with gradient, for the balance loss in the trainer
+        self.last_probs = F.softmax(logits, dim=-1)
+
         # Cache for auxiliary losses
-        self._last_gate_probs = F.softmax(logits, dim=-1).detach()
+        self._last_gate_probs = self.last_probs.detach()
         self._last_gate_hard = gate_weights.detach()
 
         # Update utilization EMA

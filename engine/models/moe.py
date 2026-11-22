@@ -99,7 +99,7 @@ class MoETradingEngine(nn.Module):
         self,
         expert_input: torch.Tensor,
         router_input: torch.Tensor,
-    ) -> ProjectionOutput:
+    ) -> dict[str, torch.Tensor]:
         """Run the full MoE forward pass.
 
         Args:
@@ -107,8 +107,9 @@ class MoETradingEngine(nn.Module):
             router_input: Input for the router ``[B, T, F_router]``.
 
         Returns:
-            :class:`ProjectionOutput` with ``direction_prob``,
-            ``magnitude``, and ``expected_return`` (each ``[B, 1]``).
+            dict with ``direction_prob``, ``magnitude`` and ``expected_return``
+            (each ``[B]``) and ``gate_probs`` (``[B, 3]``, the router's softmax,
+            with gradient, used by the balance loss).
         """
         # 1. Router → gate weights [B, 3]
         gate_weights = self.router(router_input)
@@ -128,7 +129,15 @@ class MoETradingEngine(nn.Module):
             combined = self._hard_route(expert_input, gate_weights)
 
         # 2. Projection → direction + magnitude
-        return self.projection(combined)
+        out = self.projection(combined)
+        # flat [B] outputs: the targets are [B], and [B, 1] against [B]
+        # broadcasts to [B, B] without any error
+        return {
+            "direction_prob": out.direction_prob.reshape(-1),
+            "magnitude": out.magnitude.reshape(-1),
+            "expected_return": out.expected_return.reshape(-1),
+            "gate_probs": self.router.last_probs,
+        }
 
     # ----- hard routing helper -----
     def _hard_route(
