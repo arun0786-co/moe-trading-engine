@@ -30,4 +30,4 @@ PY=$SCR/env/bin/python
 nvidia-smi --query-gpu=name --format=csv,noheader
 $PY -m pytest -q tests | tail -2
 SEED=${SEED:-0}
-$PY -u scripts/evaluate.py --device cuda --seed $SEED --reuse ${REUSE:-0} --out results/eval_nifty_s$SEED.json 2>&1 | grep --line-buffered -v -i warn
+$PY -u scripts/evaluate.py --device cuda --seed $SEED --reuse ${REUSE:-0} ${EVAL_ARGS:-} --out results/eval_nifty_s$SEED.json 2>&1 | grep --line-buffered -v -i warn
