@@ -43,7 +43,9 @@ class DirectionalLoss(nn.Module):
         if self.label_smoothing > 0:
             target_direction = target_direction * (1.0 - self.label_smoothing) + 0.5 * self.label_smoothing
 
-        loss = F.binary_cross_entropy(pred_prob, target_direction, reduction='mean')
+        # bce on probabilities is not allowed under autocast, so do it in float32
+        with torch.autocast(device_type=pred_prob.device.type, enabled=False):
+            loss = F.binary_cross_entropy(pred_prob.float(), target_direction.float(), reduction='mean')
         return loss
 
 
