@@ -6,8 +6,8 @@ Implements a continuous-time Liquid Neural Network as an ODE system:
 where f(x, θ) is a data-dependent time constant produced by a 2-layer MLP,
 and h_tilde = tanh(W_h @ h + W_x @ x + b) is the target steady state.
 
-Uses torchdiffeq's adjoint method for memory-efficient backpropagation with
-the Dormand-Prince adaptive-step solver (dopri5).
+Uses torchdiffeq's Dormand-Prince adaptive-step solver (dopri5), with plain
+backpropagation through the solver steps.
 """
 
 from __future__ import annotations
@@ -17,7 +17,10 @@ from typing import Final
 
 import torch
 import torch.nn as nn
-from torchdiffeq import odeint_adjoint as odeint  # type: ignore[import-untyped]
+# plain odeint, not odeint_adjoint: the adjoint pass re-runs the dynamics after
+# the time loop is over, when set_input holds the last step's x, so its
+# gradients were wrong. the state is small, so the memory saving is not needed
+from torchdiffeq import odeint  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +88,9 @@ class _LiquidODEFunc(nn.Module):
             x: Input tensor of shape ``[B, F]``.
         """
         self._x = x
+        # x is constant over the step: compute its terms once, not per solver call
+        self._f_val = self.tau_net(x)
+        self._x_drive = self.W_x(x) + self.bias
 
     # ----- ODE rhs -----
     def forward(self, t: torch.Tensor, h: torch.Tensor) -> torch.Tensor:  # noqa: ARG002 – t required by API
@@ -99,9 +105,8 @@ class _LiquidODEFunc(nn.Module):
         """
         assert self._x is not None, "Call set_input(x) before ODE integration."
 
-        x = self._x
-        f_val = self.tau_net(x)                                 # [B, H]
-        h_tilde = torch.tanh(self.W_h(h) + self.W_x(x) + self.bias)  # [B, H]
+        f_val = self._f_val                                     # [B, H]
+        h_tilde = torch.tanh(self.W_h(h) + self._x_drive)       # [B, H]
         w_leak = nn.functional.softplus(self.w_leak_raw)        # [H]
 
         dhdt = -(w_leak + f_val) * h + f_val * h_tilde          # [B, H]
@@ -118,7 +123,7 @@ class LiquidODEExpert(nn.Module):
     Processes an input sequence ``[B, T, F]`` by:
         1. Iterating over time steps.
         2. At each step, holding the input constant and integrating the ODE
-           from ``t=0`` to ``t=1`` using the adjoint dopri5 solver.
+           from ``t=0`` to ``t=1`` using the dopri5 solver.
         3. Returning the final hidden state ``[B, H]``.
 
     Args:
