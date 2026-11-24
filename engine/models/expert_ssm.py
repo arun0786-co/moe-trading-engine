@@ -47,11 +47,13 @@ def _sequential_scan(
     Returns:
         ``[B, T, N]`` hidden states.
     """
-    B_batch, T, N = a.shape
+    B_batch, _, N = a.shape
     h = torch.zeros(B_batch, N, device=a.device, dtype=a.dtype)
     outputs: list[torch.Tensor] = []
-    for t in range(T):
-        h = a[:, t] * h + b[:, t]
+    # unbind once: indexing a[:, t] in the loop makes backward build a full
+    # size zero tensor for every step
+    for a_t, b_t in zip(a.unbind(1), b.unbind(1)):
+        h = a_t * h + b_t
         outputs.append(h)
     return torch.stack(outputs, dim=1)  # [B, T, N]
 
