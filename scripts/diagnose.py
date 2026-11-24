@@ -57,6 +57,7 @@ def main():
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     ap.add_argument("--seeds", default="0,1,2")
     ap.add_argument("--end-date", default=None)
+    ap.add_argument("--ckpt-dir", default="models/eval_s{seed}")
     ap.add_argument("--out", default="results/diagnose.json")
     a = ap.parse_args()
 
@@ -69,7 +70,7 @@ def main():
         test = collect(f["test"])
         ret = test["target_return"].numpy().astype(float)
         for seed in [int(s) for s in a.seeds.split(",")]:
-            ckpt = Path(f"models/eval_s{seed}/fold_{i}_best.pt")
+            ckpt = Path(a.ckpt_dir.format(seed=seed)) / f"fold_{i}_best.pt"
             if not ckpt.exists():
                 continue
             state = torch.load(ckpt, map_location=a.device, weights_only=False)
