@@ -1,0 +1,444 @@
+{
+ "config": "config/settings.yaml",
+ "seed": 2,
+ "device": "cpu",
+ "folds": 11,
+ "test_days": 2352,
+ "buy_cost": 0.00042771,
+ "sell_cost": 0.00052771,
+ "up_day_share": 0.5429,
+ "overall": {
+  "buy_hold": {
+   "accuracy": 0.5429,
+   "total_return": 2.3953,
+   "cagr": 0.1376,
+   "sharpe": 0.885,
+   "max_drawdown": -0.3768,
+   "days_long": 1.0,
+   "trades": 1
+  },
+  "logreg": {
+   "accuracy": 0.5353,
+   "total_return": 1.2473,
+   "cagr": 0.0891,
+   "sharpe": 0.674,
+   "max_drawdown": -0.334,
+   "days_long": 0.781,
+   "trades": 238
+  },
+  "moe": {
+   "accuracy": 0.5162,
+   "total_return": 0.4486,
+   "cagr": 0.0399,
+   "sharpe": 0.348,
+   "max_drawdown": -0.3817,
+   "days_long": 0.659,
+   "trades": 306
+  }
+ },
+ "overall_cost_0.1pct_side": {
+  "buy_hold": {
+   "accuracy": 0.5429,
+   "total_return": 2.3934,
+   "cagr": 0.1375,
+   "sharpe": 0.885,
+   "max_drawdown": -0.3768,
+   "days_long": 1.0,
+   "trades": 1
+  },
+  "logreg": {
+   "accuracy": 0.5353,
+   "total_return": 0.7534,
+   "cagr": 0.061,
+   "sharpe": 0.49,
+   "max_drawdown": -0.3417,
+   "days_long": 0.781,
+   "trades": 238
+  },
+  "moe": {
+   "accuracy": 0.5162,
+   "total_return": 0.0527,
+   "cagr": 0.0054,
+   "sharpe": 0.111,
+   "max_drawdown": -0.4034,
+   "days_long": 0.659,
+   "trades": 306
+  }
+ },
+ "per_fold": [
+  {
+   "fold": 0,
+   "test_days": 214,
+   "best_epoch": 67,
+   "reused": false,
+   "sec": 1245.4,
+   "buy_hold": {
+    "accuracy": 0.5467,
+    "total_return": 0.1423,
+    "cagr": 0.1667,
+    "sharpe": 1.179,
+    "max_drawdown": -0.1166,
+    "days_long": 1.0,
+    "trades": 1
+   },
+   "logreg": {
+    "accuracy": 0.5327,
+    "total_return": 0.1444,
+    "cagr": 0.1692,
+    "sharpe": 1.205,
+    "max_drawdown": -0.1176,
+    "days_long": 0.93,
+    "trades": 13
+   },
+   "moe": {
+    "accuracy": 0.5421,
+    "total_return": 0.119,
+    "cagr": 0.1392,
+    "sharpe": 1.182,
+    "max_drawdown": -0.1056,
+    "days_long": 0.678,
+    "trades": 40
+   }
+  },
+  {
+   "fold": 1,
+   "test_days": 218,
+   "best_epoch": 0,
+   "reused": false,
+   "sec": 363.8,
+   "buy_hold": {
+    "accuracy": 0.5459,
+    "total_return": 0.1955,
+    "cagr": 0.2252,
+    "sharpe": 2.359,
+    "max_drawdown": -0.0411,
+    "days_long": 1.0,
+    "trades": 1
+   },
+   "logreg": {
+    "accuracy": 0.5,
+    "total_return": 0.0961,
+    "cagr": 0.11,
+    "sharpe": 1.435,
+    "max_drawdown": -0.0335,
+    "days_long": 0.752,
+    "trades": 31
+   },
+   "moe": {
+    "accuracy": 0.5,
+    "total_return": 0.0163,
+    "cagr": 0.0186,
+    "sharpe": 0.327,
+    "max_drawdown": -0.0303,
+    "days_long": 0.431,
+    "trades": 38
+   }
+  },
+  {
+   "fold": 2,
+   "test_days": 215,
+   "best_epoch": 4,
+   "reused": false,
+   "sec": 469.9,
+   "buy_hold": {
+    "accuracy": 0.5349,
+    "total_return": 0.034,
+    "cagr": 0.0393,
+    "sharpe": 0.367,
+    "max_drawdown": -0.1455,
+    "days_long": 1.0,
+    "trades": 1
+   },
+   "logreg": {
+    "accuracy": 0.5581,
+    "total_return": 0.0594,
+    "cagr": 0.0688,
+    "sharpe": 0.659,
+    "max_drawdown": -0.1249,
+    "days_long": 0.781,
+    "trades": 25
+   },
+   "moe": {
+    "accuracy": 0.5674,
+    "total_return": 0.0349,
+    "cagr": 0.0403,
+    "sharpe": 0.448,
+    "max_drawdown": -0.1015,
+    "days_long": 0.521,
+    "trades": 32
+   }
+  },
+  {
+   "fold": 3,
+   "test_days": 211,
+   "best_epoch": 2,
+   "reused": false,
+   "sec": 491.0,
+   "buy_hold": {
+    "accuracy": 0.5261,
+    "total_return": 0.123,
+    "cagr": 0.146,
+    "sharpe": 1.038,
+    "max_drawdown": -0.1145,
+    "days_long": 1.0,
+    "trades": 1
+   },
+   "logreg": {
+    "accuracy": 0.4976,
+    "total_return": 0.0986,
+    "cagr": 0.1168,
+    "sharpe": 0.872,
+    "max_drawdown": -0.1085,
+    "days_long": 0.934,
+    "trades": 10
+   },
+   "moe": {
+    "accuracy": 0.5024,
+    "total_return": 0.1022,
+    "cagr": 0.1212,
+    "sharpe": 0.904,
+    "max_drawdown": -0.1096,
+    "days_long": 0.882,
+    "trades": 14
+   }
+  },
+  {
+   "fold": 4,
+   "test_days": 220,
+   "best_epoch": 4,
+   "reused": false,
+   "sec": 635.5,
+   "buy_hold": {
+    "accuracy": 0.6,
+    "total_return": 0.1543,
+    "cagr": 0.1755,
+    "sharpe": 0.666,
+    "max_drawdown": -0.3763,
+    "days_long": 1.0,
+    "trades": 1
+   },
+   "logreg": {
+    "accuracy": 0.5636,
+    "total_return": 0.0445,
+    "cagr": 0.0504,
+    "sharpe": 0.319,
+    "max_drawdown": -0.3285,
+    "days_long": 0.755,
+    "trades": 25
+   },
+   "moe": {
+    "accuracy": 0.5136,
+    "total_return": -0.0933,
+    "cagr": -0.1046,
+    "sharpe": -0.19,
+    "max_drawdown": -0.381,
+    "days_long": 0.85,
+    "trades": 19
+   }
+  },
+  {
+   "fold": 5,
+   "test_days": 218,
+   "best_epoch": 2,
+   "reused": false,
+   "sec": 764.2,
+   "buy_hold": {
+    "accuracy": 0.555,
+    "total_return": 0.144,
+    "cagr": 0.1654,
+    "sharpe": 1.125,
+    "max_drawdown": -0.1008,
+    "days_long": 1.0,
+    "trades": 1
+   },
+   "logreg": {
+    "accuracy": 0.5688,
+    "total_return": 0.0918,
+    "cagr": 0.1051,
+    "sharpe": 0.893,
+    "max_drawdown": -0.087,
+    "days_long": 0.656,
+    "trades": 33
+   },
+   "moe": {
+    "accuracy": 0.5596,
+    "total_return": 0.122,
+    "cagr": 0.1399,
+    "sharpe": 1.093,
+    "max_drawdown": -0.0769,
+    "days_long": 0.739,
+    "trades": 23
+   }
+  },
+  {
+   "fold": 6,
+   "test_days": 218,
+   "best_epoch": 4,
+   "reused": false,
+   "sec": 1049.5,
+   "buy_hold": {
+    "accuracy": 0.4954,
+    "total_return": 0.0745,
+    "cagr": 0.0852,
+    "sharpe": 0.571,
+    "max_drawdown": -0.1529,
+    "days_long": 1.0,
+    "trades": 1
+   },
+   "logreg": {
+    "accuracy": 0.4817,
+    "total_return": 0.0204,
+    "cagr": 0.0233,
+    "sharpe": 0.232,
+    "max_drawdown": -0.1861,
+    "days_long": 0.922,
+    "trades": 12
+   },
+   "moe": {
+    "accuracy": 0.4908,
+    "total_return": 0.0046,
+    "cagr": 0.0052,
+    "sharpe": 0.113,
+    "max_drawdown": -0.1969,
+    "days_long": 0.95,
+    "trades": 10
+   }
+  },
+  {
+   "fold": 7,
+   "test_days": 215,
+   "best_epoch": 7,
+   "reused": false,
+   "sec": 1008.0,
+   "buy_hold": {
+    "accuracy": 0.6,
+    "total_return": 0.2223,
+    "cagr": 0.2606,
+    "sharpe": 2.503,
+    "max_drawdown": -0.0661,
+    "days_long": 1.0,
+    "trades": 1
+   },
+   "logreg": {
+    "accuracy": 0.6372,
+    "total_return": 0.3245,
+    "cagr": 0.3828,
+    "sharpe": 3.885,
+    "max_drawdown": -0.0375,
+    "days_long": 0.907,
+    "trades": 10
+   },
+   "moe": {
+    "accuracy": 0.5395,
+    "total_return": 0.1551,
+    "cagr": 0.1809,
+    "sharpe": 2.389,
+    "max_drawdown": -0.0505,
+    "days_long": 0.54,
+    "trades": 33
+   }
+  },
+  {
+   "fold": 8,
+   "test_days": 216,
+   "best_epoch": 8,
+   "reused": false,
+   "sec": 819.2,
+   "buy_hold": {
+    "accuracy": 0.5463,
+    "total_return": 0.087,
+    "cagr": 0.1005,
+    "sharpe": 0.76,
+    "max_drawdown": -0.1093,
+    "days_long": 1.0,
+    "trades": 1
+   },
+   "logreg": {
+    "accuracy": 0.5185,
+    "total_return": 0.0083,
+    "cagr": 0.0095,
+    "sharpe": 0.143,
+    "max_drawdown": -0.0598,
+    "days_long": 0.63,
+    "trades": 34
+   },
+   "moe": {
+    "accuracy": 0.463,
+    "total_return": -0.0862,
+    "cagr": -0.0983,
+    "sharpe": -0.928,
+    "max_drawdown": -0.1039,
+    "days_long": 0.5,
+    "trades": 36
+   }
+  },
+  {
+   "fold": 9,
+   "test_days": 219,
+   "best_epoch": 28,
+   "reused": false,
+   "sec": 1496.4,
+   "buy_hold": {
+    "accuracy": 0.5068,
+    "total_return": 0.117,
+    "cagr": 0.1335,
+    "sharpe": 1.156,
+    "max_drawdown": -0.0637,
+    "days_long": 1.0,
+    "trades": 1
+   },
+   "logreg": {
+    "accuracy": 0.5525,
+    "total_return": 0.0212,
+    "cagr": 0.024,
+    "sharpe": 0.306,
+    "max_drawdown": -0.0824,
+    "days_long": 0.735,
+    "trades": 26
+   },
+   "moe": {
+    "accuracy": 0.5068,
+    "total_return": 0.0644,
+    "cagr": 0.0733,
+    "sharpe": 1.005,
+    "max_drawdown": -0.0372,
+    "days_long": 0.507,
+    "trades": 37
+   }
+  },
+  {
+   "fold": 10,
+   "test_days": 188,
+   "best_epoch": 7,
+   "reused": false,
+   "sec": 866.0,
+   "buy_hold": {
+    "accuracy": 0.5106,
+    "total_return": 0.0125,
+    "cagr": 0.0165,
+    "sharpe": 0.185,
+    "max_drawdown": -0.1389,
+    "days_long": 1.0,
+    "trades": 1
+   },
+   "logreg": {
+    "accuracy": 0.4681,
+    "total_return": -0.0325,
+    "cagr": -0.0426,
+    "sharpe": -0.414,
+    "max_drawdown": -0.1507,
+    "days_long": 0.564,
+    "trades": 26
+   },
+   "moe": {
+    "accuracy": 0.4894,
+    "total_return": -0.0275,
+    "cagr": -0.0361,
+    "sharpe": -0.274,
+    "max_drawdown": -0.1391,
+    "days_long": 0.649,
+    "trades": 28
+   }
+  }
+ ]
+}
