@@ -114,6 +114,8 @@ def main():
                     help="load the saved best checkpoint for folds below this index instead of training")
     ap.add_argument("--side-cost", type=float, default=-1,
                     help="cost per side as a fraction; default: the engine's indian cost model")
+    ap.add_argument("--ckpt-dir", default="models/eval_s{seed}", help="where fold checkpoints go")
+    ap.add_argument("--threads", type=int, default=0, help="cpu threads for torch, 0 = default")
     ap.add_argument("--end-date", default=None, help="last data date, default: config (null = today)")
     ap.add_argument("--out", default="results/eval_nifty.json")
     a = ap.parse_args()
@@ -121,6 +123,8 @@ def main():
     for noisy in ["engine.data", "engine.models", "engine.training"]:
         logging.getLogger(noisy).setLevel(logging.WARNING)
     torch.manual_seed(a.seed)
+    if a.threads:
+        torch.set_num_threads(a.threads)
     np.random.seed(a.seed)
 
     cfg = yaml.safe_load(open(a.config))
@@ -155,7 +159,7 @@ def main():
                          weight_decay=t_cfg["weight_decay"], max_epochs=a.epochs or t_cfg["max_epochs"],
                          patience=t_cfg["patience"], gradient_clip=t_cfg["gradient_clip"],
                          use_amp=t_cfg["use_amp"], scheduler=t_cfg["scheduler"],
-                         warmup_epochs=t_cfg["warmup_epochs"], checkpoint_dir=f"models/eval_s{a.seed}")
+                         warmup_epochs=t_cfg["warmup_epochs"], checkpoint_dir=a.ckpt_dir.format(seed=a.seed))
         trainer = Trainer(model, loss, tc, device=torch.device(a.device))
         ckpt = Path(tc.checkpoint_dir) / f"fold_{i}_best.pt"
         if i < a.reuse and ckpt.exists():
