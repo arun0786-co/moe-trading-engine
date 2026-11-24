@@ -337,6 +337,11 @@ def download_ticker(
             time.sleep(backoff)
             backoff *= 2.0
 
+    if new_df is None and existing_df is not None and len(existing_df) > 0:
+        # the gap is often a weekend or holiday with no bars at all
+        logger.warning("[%s] Incremental update got nothing (%s); using cached data.", ticker, last_error)
+        return existing_df
+
     if new_df is None:
         raise RuntimeError(
             f"[{ticker}] All {max_retries} download attempts failed. "
