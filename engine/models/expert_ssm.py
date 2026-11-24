@@ -12,15 +12,12 @@ Implements a selective SSM with input-dependent dynamics:
     Δ (step size) is input-dependent: Δ = softplus(Linear(x_t))
     A is diagonal (stored as a vector) for efficiency.
 
-A pure-PyTorch **parallel associative scan** implements the linear
-recurrence for O(T log T) parallel work (sequential fallback without
-custom CUDA kernels).
+The linear recurrence runs as a plain sequential loop over time (T = 30).
 """
 
 from __future__ import annotations
 
 import logging
-import math
 from typing import Final
 
 import torch
@@ -31,78 +28,11 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Associative (prefix) scan for the linear recurrence
+# Scan for the linear recurrence h_t = a_t * h_{t-1} + b_t
 # ---------------------------------------------------------------------------
-
-def _associative_scan(
-    a: torch.Tensor,
-    b: torch.Tensor,
-) -> torch.Tensor:
-    """Pure-PyTorch parallel associative scan for linear recurrence.
-
-    Given sequences ``a`` and ``b`` of length ``T`` the recurrence is:
-
-        h_0 = b_0
-        h_t = a_t * h_{t-1} + b_t
-
-    The associative binary operator is:
-
-        (a1, b1) ∘ (a2, b2) = (a2 * a1,  a2 * b1 + b2)
-
-    This implementation uses a Blelloch-style up/down sweep implemented as
-    iterative doublings (works on GPU tensors, will be replaced by a fused
-    CUDA kernel later).
-
-    Args:
-        a: Multiplicative coefficients ``[B, T, N]``.
-        b: Additive coefficients ``[B, T, N]``.
-
-    Returns:
-        Scan result (hidden states) ``[B, T, N]``.
-    """
-    # Clone to avoid in-place mutation on the computation graph
-    a = a.clone()
-    b = b.clone()
-
-    T = a.shape[1]
-    # Number of sweep levels
-    num_levels = int(math.ceil(math.log2(T)))
-
-    # Pad to power-of-two length for clean indexing
-    pow2_T = 1 << num_levels
-    if pow2_T != T:
-        pad_len = pow2_T - T
-        a = F.pad(a, (0, 0, 0, pad_len), value=0.0)
-        # For padded positions: a=0, b=0 → identity-like, won't affect result
-        b = F.pad(b, (0, 0, 0, pad_len), value=0.0)
-
-    # ---- Up-sweep (reduce) ----
-    for d in range(num_levels):
-        stride = 1 << (d + 1)
-        half = 1 << d
-        # Indices of the "right" children
-        idx_right = torch.arange(stride - 1, pow2_T, stride, device=a.device)
-        idx_left = idx_right - half
-
-        # (a_right, b_right) ∘= (a_left, b_left)
-        a_left = a[:, idx_left]
-        b_left = b[:, idx_left]
-        # a_right = a_right * a_left
-        a[:, idx_right] = a[:, idx_right] * a_left
-        # b_right = a_right_orig ... wait, need original a_right before update
-        # Fix: compute both before writing
-        a_r = a[:, idx_right].clone()  # already updated above — redo properly
-
-    # ---------- Re-do with correct ordering ----------
-    # Reset and use a clean loop (clarity > micro-optimisation for PyTorch fallback)
-    a = a[:, :T].clone() if pow2_T != T else a.clone()
-    b = b[:, :T].clone() if pow2_T != T else b.clone()
-    # Fallback: simple sequential scan (O(T), perfectly correct).
-    # The parallel scan above is tricky to get right with in-place ops on
-    # autograd tensors; we use the sequential version here and defer the
-    # fused CUDA kernel to the optimisation phase.
-    return _sequential_scan(a, b)
-
+# A parallel (Blelloch) scan was started here but never finished; the old
+# function threw its partial result away and ran the sequential scan anyway.
+# With T = 30 the sequential loop is cheap, so it is the only version now.
 
 def _sequential_scan(
     a: torch.Tensor,
@@ -290,7 +220,7 @@ class SelectiveSSMExpert(nn.Module):
         B_flat = B_bar.permute(0, 2, 1, 3).reshape(B_batch * D, T, N)
 
         # Parallel scan
-        h_all = _associative_scan(A_flat, B_flat)  # [B*D, T, N]
+        h_all = _sequential_scan(A_flat, B_flat)  # [B*D, T, N]
 
         # Reshape back: [B, D, T, N]
         h_all = h_all.reshape(B_batch, D, T, N)
