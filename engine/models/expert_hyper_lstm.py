@@ -156,17 +156,12 @@ class HyperLSTMExpert(nn.Module):
             d_row = self.proj_d_row(h_hyper)  # [B, 4H]
             d_col = self.proj_d_col(h_hyper)  # [B, F+H]
 
-            # 3. Scale base weights: W_t(i,j) = W_base(i,j) * d_row(i) * d_col(j)
-            # W_base: [4H, F+H]
-            # d_row:  [B, 4H] -> [B, 4H, 1]
-            # d_col:  [B, F+H] -> [B, 1, F+H]
-            scale = d_row.unsqueeze(2) * d_col.unsqueeze(1)  # [B, 4H, F+H]
-            W_t = self.W_base.unsqueeze(0) * scale  # [B, 4H, F+H]
-
-            # 4. Primary LSTM gates ────────────────────────────────────
+            # 3 + 4. Primary LSTM gates with the scaled weights
+            # W_t(i,j) = W_base(i,j) * d_row(i) * d_col(j), so
+            # W_t @ z = d_row * (W_base @ (d_col * z)): same result without
+            # building a [B, 4H, F+H] matrix every step
             concat_input = torch.cat([x_t, h], dim=-1)  # [B, F+H]
-            # Batched matmul: [B, 4H, F+H] @ [B, F+H, 1] -> [B, 4H, 1]
-            gates = torch.bmm(W_t, concat_input.unsqueeze(2)).squeeze(2)  # [B, 4H]
+            gates = d_row * ((d_col * concat_input) @ self.W_base.t())  # [B, 4H]
             gates = gates + self.b_gates  # broadcast bias
 
             # Split into 4 gates
